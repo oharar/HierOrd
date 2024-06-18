@@ -1,0 +1,18 @@
+Package: HierOrd
+Type: Package
+Title: Hierarchical Ordination, using INLA
+Version: 0.0.1
+Author: Bob O'Hara
+Maintainer: Bob O'Hara <bob.ohara@ntnu.no>
+Description: This does not yet work.
+    But some of the functions might.
+License: CC BY 4.0
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports:
+    INLA,
+    GPArotation
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
