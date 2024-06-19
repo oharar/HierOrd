@@ -2,7 +2,6 @@ library(HierOrd)
 library(INLA)
 library(coda)
 
-
 set.seed(42)
 SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma1 = 0.25, NLVs = 1,
                        ColEff1 = 1, RowEff1 = 1,  Intercept1 = 4)
