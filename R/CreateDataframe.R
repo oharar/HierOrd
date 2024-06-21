@@ -100,6 +100,6 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
                                Col = colnames(data.covs)[grep("Col", colnames(data.covs))])
   )
 
-  list(data=data, Names=Names, NRows = nrows, NCols = ncols)
+  list(data=data, Names=Names, NRows = nrows, NCols = ncols, nLVs = nLVs)
 
 }

@@ -23,8 +23,8 @@ SimLinComb <- function(mod, n=1) {
   lvs <- factor(gsub(".*\\.LV", "", l1))
   Sim.df <- data.frame(Sim=Sim, lvs=lvs)
   Sim.mat <- utils::unstack(Sim.df, form = Sim ~ lvs)
-  colnames(Sim.mat) <- gsub(".*\\.", "", rownames(Sim.df)[grep("lc1\\.", rownames(Sim.df))])
   rownames(Sim.mat) <- gsub("\\..*", "", rownames(Sim.df)[grep("LV11?$", rownames(Sim.df))])
+  colnames(Sim.mat) <- gsub(".*\\.", "", rownames(Sim.df)[grep("lc1\\.", rownames(Sim.df))])
 
   Sim.mat
 }

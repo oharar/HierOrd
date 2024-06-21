@@ -8,8 +8,8 @@ SimulateData(
   NRows = 10,
   NCols = 5,
   NLVs = 1,
-  ColEff1,
-  RowEff1,
+  ColVar,
+  RowVar,
   Sigma1,
   Intercept1
 )
@@ -21,9 +21,9 @@ SimulateData(
 
 \item{NLVs}{Number of latent variables, defaults to 1}
 
-\item{ColEff1}{Vector of Column effects}
+\item{ColVar}{Vector of Column effects}
 
-\item{RowEff1}{Vector of row effects}
+\item{RowVar}{Variance of row effects}
 
 \item{Sigma1}{Scale for latent variables: standard deviation}
 
@@ -40,5 +40,5 @@ This simulates data from a hierarchical ordination, assuming a Poisson distribut
 }
 \examples{
 SimulateData(NRows = 10, NCols = 5, NLVs = 1,
-                         ColEff1=0, RowEff1=0 ,Sigma1=0.1, Intercept1=1)
+                         ColVar=0, RowVar=0 ,Sigma1=0.1, Intercept1=1)
 }

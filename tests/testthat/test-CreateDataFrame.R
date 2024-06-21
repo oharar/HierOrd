@@ -6,7 +6,8 @@ df <- CreateDataframe(mat=m, row.data=rdf,
 
 
 test_that("data frame created", {
-  expect_equal(length(df), 4)
+  expect_equal(length(df), 5)
   expect_equal(nrow(df$data), 6)
   expect_equal(length(df$Names), 9)
+  expect_equal(df$nLVs, 1)
 })

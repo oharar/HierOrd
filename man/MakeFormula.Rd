@@ -10,7 +10,7 @@ MakeFormula(
   factnames = NULL,
   factprior =
     "list(theta = list(prec = \\"loggamma\\", param = c(1, 1), initial = 1, fixed = TRUE)",
-  epsprior = "list(prec = list(prior = \\"pc.prec\\", param = c(1, 0.01)))",
+  epsprior = "list(prior = \\"pc.prec\\", param = c(1, 0.01))",
   epsname = ""
 )
 }
@@ -21,9 +21,9 @@ MakeFormula(
 
 \item{factnames}{names of variables that will be factors, defaults to NULL}
 
-\item{factprior}{prior for hyperparameters for precision of factors. Defaults to "list(theta = list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE)",}
+\item{factprior}{prior for hyperparameters for precision of factors. Defaults to "list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE)",}
 
-\item{epsprior}{prior for hyperparameters for residual precision. Defaults to "list(prec = list(prior = \"pc.prec\", param = c(1, 0.01)))",}
+\item{epsprior}{prior for hyperparameters for residual precision. Defaults to "list(prior = \"pc.prec\", param = c(1, 0.01))",}
 
 \item{epsname}{Name of residual error}
 }

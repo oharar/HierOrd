@@ -3,8 +3,8 @@
 #' @param NRows Number of rows, defaults to 10
 #' @param NCols Number of rows, defaults to 5
 #' @param NLVs Number of latent variables, defaults to 1
-#' @param ColEff1 Vector of Column effects
-#' @param RowEff1 Vector of row effects
+#' @param ColVar Vector of Column effects
+#' @param RowVar Variance of row effects
 #' @param Sigma1 Scale for latent variables: standard deviation
 #' @param Intercept1 Intercept
 #'
@@ -14,20 +14,20 @@
 #'
 #' @examples
 #' SimulateData(NRows = 10, NCols = 5, NLVs = 1,
-#'                          ColEff1=0, RowEff1=0 ,Sigma1=0.1, Intercept1=1)
+#'                          ColVar=0, RowVar=0 ,Sigma1=0.1, Intercept1=1)
 #' @export
 #'@importFrom stats rnorm rpois
 
 SimulateData <- function(NRows = 10, NCols = 5, NLVs = 1,
-                         ColEff1, RowEff1,Sigma1, Intercept1) {
-  if(length(ColEff1)!=NLVs) stop("ColEff1 should have NLVs elements")
-  if(length(RowEff1)!=NLVs) stop("RowEff1 should have NLVs elements")
+                         ColVar, RowVar, Sigma1, Intercept1) {
+  if(length(ColVar)!=NLVs) stop("ColVar should have NLVs elements")
+  if(length(RowVar)!=NLVs) stop("RowVar should have NLVs elements")
 
   ColCov1 <- stats::rnorm(NCols, 0, 1)
   RowCov1 <- stats::rnorm(NRows, 0, 1)
 
-  ColScores1 <- SimTrueScores(eff=ColEff1, covs=ColCov1, scale=TRUE)
-  RowScores1 <- SimTrueScores(eff=RowEff1, covs=RowCov1, scale=TRUE)
+  ColScores1 <- SimTrueScores(eff=ColVar, covs=ColCov1, scale=TRUE)
+  RowScores1 <- SimTrueScores(eff=RowVar, covs=RowCov1, scale=TRUE)
 
   eta.m <- Intercept1 + Sigma1*RowScores1%*%t(ColScores1)
   Counts <- apply(eta.m, 2, function(v) stats::rpois(length(v), exp(v)))
@@ -35,7 +35,8 @@ SimulateData <- function(NRows = 10, NCols = 5, NLVs = 1,
   RowCov <- data.frame(RowCovariate = RowCov1)
   ColCov <- data.frame(ColCovariate = ColCov1)
 
-  list(Counts=Counts, RowCov=RowCov, ColCov=ColCov)
+  list(Counts=Counts, RowCov=RowCov, ColCov=ColCov,
+       TrueRowScores = RowScores1, TrueColScores = ColScores1)
 }
 
 

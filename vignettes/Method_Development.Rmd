@@ -1,0 +1,245 @@
+---
+title: "Method_Development"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Method_Development}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+## Introduction 
+
+This is an explanation of what is being set up. it is not working at the moment, so if you, poor demented reader, want to debug this, please go ahead!
+
+## The Model
+
+Hierarchical ordination is intended to be an extension of GLLVMs. What we are aiming for this a model with a response $Y_{ij}$ for rows (=sites) $i$ and columns (=species) $j$, where $Y$ is assumed to be from a distributon in the exponential family. Then $E(Y_{ij}) = g^{-1}(\eta_{ij})$. Thus far we have a standard GLM. The fun begins with $\eta$.
+
+We have a latent variable model, so 
+
+$$
+\eta_{ij} = \sum_{l=1}^L \gamma_{il} \Sigma_{ll} z_{jl}
+$$
+
+with the aim of modelling $\gamma_{il}$ and $z_{jl}$ further. We paramerterise this so that $Var(\gamma_{il}) = Var(z_{jl})=1$, and $\Sigma$ is a diagonal matrix of variances.
+
+For the moment, we are sticking to this model, and also using $L=1$.
+
+For the model fitting, if we condition on $z_{jl}$, this is just a GLM where $\gamma_{il} \Sigma_{ll}$ are the regression covariates that can be estimated (and $\gamma_{il}$ and $\Sigma_{ll}$ recovered afterwards). Similarly, if we condition on $\gamma_{il}$ this is also a GLM. It is slightly more convenient to use a GLMM, and make $\gamma_{il} \Sigma_{ll}$ a random effect, so $\Sigma_{ll}$ is just the estimated variance.
+
+This leads to the following scheme for one iteration:
+
+1. Have current values of $\gamma^{(k)}_{il}$, $\Sigma^{(k)}_{ll}$ and $z^{(k)}_{jl}$.
+1. Fit a model `Y~s(Row, Column, "iid")`, i.e. a random effect for Row ($\gamma_{il}$), regressing against the column effects ($z_{jl}$). The variance of the random effect will be an estimate of $\Sigma_{ll}$.
+1. Simulate values of $\gamma^{(k+1)}_{il}$ from their posterior distribution: note that these need to be scaled to have variance 1.
+1. Fit a model `Y~s(Column, Row, "iid")`, i.e. a random effect for Column ($\gamma_{il}$), regressing against the row effects ($z_{jl}$). The variance of the random effect will again be $\Sigma_{ll}$.
+1. Simulate values of $z^{(k+1)}_{il}$ from their posterior distribution: note that these need to be scaled to have variance 1. 
+
+At each step we keep the INLA object as well as the simulations. INLA can marginalise over the objects, with the `INLA::inla.merge()`, so we do not need to simulate $\Sigma$: we can extract it afterwards.
+
+This is, in essence a Gibbs sampler: we iteratively sample $\gamma_{il}|z_{jl}$, and then $z_{jl}|\gamma_{il}$. At evert step, we marginalise over $\Sigma$ and any other parameters. The reason for doing this is that the idea extends to more complex models which are still a GLMM, i.e. where there is a linear model on the row and/or column effects.
+
+
+## Trying to get this to run.
+
+```{r setup}
+library(HierOrd)
+library(INLA)
+library(coda)
+# library(mcmcplots)
+
+```
+
+We will simulate some data from a Poisson distribution.
+
+```{r SimData}
+set.seed(42)
+SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma1 = 0.7, NLVs = 1,
+                       ColVar = 0, RowVar = 0,  Intercept1 = 4)
+str(SimDat)
+
+```
+
+So we have a matrix of counts, and the true row and column scores. Next we format the data:
+
+
+```{r CreateDataFrame}
+nLVs <- 1
+Family = "Poisson"
+LVdata <- CreateDataframe(mat=SimDat$Counts, row.data=SimDat$RowCov, col.data=SimDat$ColCov, nLVs=nLVs)
+str(LVdata)
+```
+
+There is some overkill, but it will be helpful if we get this working. The data frame `data` is what gets passed to INLA.
+
+- `Y` is the response
+- `RowInd` is $i$
+- `ColInd` is $j$
+- `RowScore1` is $\gamma_{i1}$
+- `ColScore1` is $z_{j1}$
+- `Wt.Roweps.LV1` is $\gamma_{i1}$, and gets used as a weight in the model.
+- `Wt.Coleps.LV1` is $z_{i1}$, and gets used as a weight in the model.
+
+Some of the other variables are used elsewhere.
+
+The `Names` list will help in updating the model.
+
+Next we write the formulae for the INLA models:
+
+```{r CreateFormulae}
+ EpsHyper <- "list(prec=list(prior = \"pc.prec\", param = c(1, 0.0001)))"
+
+row.formula <- MakeFormula(nlv=nLVs, linnames=NULL, epsname="Row",
+                           factprior = RowCovHyper, epsprior = EpsHyper)
+col.formula <- MakeFormula(nlv=nLVs, linnames=NULL, epsname="Col",
+                           factprior = RowCovHyper, epsprior = EpsHyper)
+row.formula
+```
+
+The hyperparameters aren't so important at the moment. The model is just for `Roweps.LV1`, with `Wt.Roweps.LV1` as a weight: this is just the current column scores. They will be updated every iteration. `col.formula` has the same format.
+
+Now we create the linear combinations. These are $\gamma_{il}$ and $z_{jl}$, so for more complex models they will be sums of terms. We need these so that we can simulate from them directly.
+
+```{r LinCombs}
+RowLinComb <- MakeLincombs(covar.df =NULL, EpsName = "Roweps", nlv =nLVs, N=LVdata$NRows)
+ColLinComb <- MakeLincombs(covar.df =NULL, EpsName = "Coleps", nlv = nLVs, N=LVdata$NCols)
+
+str(RowLinComb[[1]])
+```
+
+Thee are `r length(RowLinComb)` row linear combinations and `r length(ColLinComb)` column linear combinations.To see what we do, here's one iteration, starting from the true scores. We fit the model, then we simulate the linear combinations. We plot the mean of the linear combination, and the simulated values against the true scores, to check that everything is working.
+
+```{r Start}
+# update with true row scores
+data.True <- UpdateScores(scores=SimDat$TrueColScores,
+                              data=LVdata$data, rowcol="Col", names=LVdata$Names)
+data.True <- UpdateScores(scores=SimDat$TrueRowScores,
+                              data=data.True, rowcol="Row", names=LVdata$Names)
+
+mod.col <- inla(col.formula, data=data.True, family=Family,
+                lincomb = ColLinComb)
+
+# simulate col effects
+SimCol <- SimLinComb(mod.col, n=1)
+SimCol.r <- rotateLVs(SimCol, scale = TRUE)
+
+pairs(cbind(LCmean=mod.col$summary.lincomb.derived$mean, 
+            SimLC = SimCol$LV1, 
+            RotLV = SimCol.r$loadings, 
+            TrSc = c(SimDat$TrueColScores)))
+```
+
+We scale `SimCol`: with >1 latent variable this would also rotate them. Note that this might induce a sign change, if we are unlucky. The pairs plot just checks that we have the correct LVs in the right place.
+
+Now we run the model
+
+```{r RunModel}
+NBurnin <- 20
+NIter <- 100
+
+# which row to fix sign (use maximum)
+RowSign <- which(SimDat$TrueRowScores==max(SimDat$TrueRowScores))
+ColSign <- which(SimDat$TrueColScores==max(SimDat$TrueColScores))
+
+# temporary data
+data.update <- LVdata$data
+
+# Set up matriices to store the row and column effects.
+RowRes <- matrix(NA, nrow=NIter, ncol=LVdata$nLVs*LVdata$NRows)
+colnames(RowRes) <- paste0("Row", rep(1:LVdata$NRows, times=LVdata$nLVs),
+                  "lv", rep(1:LVdata$nLVs, each=LVdata$NRows))
+
+ColRes <- matrix(NA, nrow=NIter, ncol=LVdata$nLVs*LVdata$NCols)
+colnames(ColRes) <- paste0("Col", rep(1:LVdata$NCols, times=LVdata$nLVs),
+                  "lv", rep(1:LVdata$nLVs, each=LVdata$NCols))
+
+# List to store the INLA objects
+inlaobj <- TRUE
+RowObjs <- ColObjs <- vector("list", NIter)
+
+# Now start running. This can take tens of minutes.
+system.time(
+for(i in 1:(NBurnin+NIter)) {
+  ## Fit row model, with col fixed
+  mod.row <- inla(row.formula, data=data.update, family=Family,
+                  lincomb = RowLinComb)
+  
+  # simulate row effects
+  SimRow <- SimLinComb(mod.row)
+  SimRow.r <- rotateLVs(SimRow, scale = TRUE)$loadings*sign(SimRow[RowSign,])
+  
+  # update row effects
+  data.update <- UpdateScores(scores=SimRow.r,
+                              data=data.update, rowcol="Row", names=LVdata$Names)
+  ### Fit col model, with row fixed
+  mod.col <- inla(col.formula, data=data.update, family=Family,
+                  lincomb = ColLinComb)
+  
+  # simulate col effects
+  SimCol <- SimLinComb(mod.col)
+  # Force the sign constraint
+  SimCol.r <- rotateLVs(SimCol, scale = TRUE)$loadings*sign(SimCol[ColSign,])
+  
+  # update col effects
+  data.update <- UpdateScores(scores=SimCol.r,
+                              data=data.update, rowcol="Col", names=LVdata$Names)
+  
+  
+  if(i > NBurnin) {
+    RowRes[i - NBurnin, ]  <- c(SimRow.r)
+    ColRes[i - NBurnin, ]  <- c(SimCol.r)
+    if(inlaobj) {
+      ColObjs[[i - NBurnin]] <- mod.col
+      RowObjs[[i - NBurnin]] <- mod.row
+    }
+  }
+  if(inlaobj) {
+    res <- list(row.mcmc = mcmc(RowRes, start=NBurnin+1, end=NBurnin+NIter, thin=1),
+                col.mcmc = mcmc(ColRes, start=NBurnin+1, end=NBurnin+NIter, thin=1),
+                ColINLA = ColObjs, RowINLA = RowObjs)
+  } else {
+    res <- mcmc(ResMat)
+  }
+}
+)
+```
+
+We can check the mixing. The first variable is the one with the largest true effect, so the sign shouldn't change. The mixing looks OK, except there seems to be a negative autocorrelation. Longer runs etc. should help.
+
+```{r LookatMixing, fig.height=8, fig.width=8}
+
+plot(res$row.mcmc[,paste0("Row", c(RowSign, 1:2), "lv1")])
+
+# mcmcplots::caterplot(res$mcmc[,grep("Row", colnames(res$mcmc))], reorder = FALSE)
+# mcmcplots::caterplot(res$mcmc[,grep("Col", colnames(res$mcmc))], reorder = FALSE)
+
+```
+
+Now we plot against true scores. The estimates are shrunk towards 0. This might partly be the priors, and also the signs changing.
+
+```{r PotTrueRow, fig.width=8}
+RowMean <- summary(res$row.mcmc)$statistics[,"Mean"]
+RowCI <- summary(res$row.mcmc)$quantiles
+
+ColMean <- summary(res$col.mcmc)$statistics[,"Mean"]
+ColCI <- summary(res$col.mcmc)$quantiles
+
+par(mfrow=c(1,2))
+plot(SimDat$TrueRowScores, RowMean, ylim=range(RowCI), main="Row")
+segments(SimDat$TrueRowScores, RowCI[,"2.5%"], SimDat$TrueRowScores, RowCI[,"97.5%"])
+abline(0,1, col=2); abline(0,-1, col=2)
+
+plot(SimDat$TrueColScores, ColMean, ylim=range(ColCI), main="Column")
+segments(SimDat$TrueColScores, ColCI[,"2.5%"], SimDat$TrueColScores, ColCI[,"97.5%"])
+abline(0,1, col=2); abline(0,-1, col=2)
+
+
+```
