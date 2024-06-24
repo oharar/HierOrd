@@ -1,0 +1,109 @@
+---
+title: "HierarchicalOrdination"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{HierarchicalOrdination}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction 
+
+This is an explanation of what is being set up. it is not working at the moment, so if you, poor demented reader, want to debug this, please go ahead!
+
+## The Model
+
+Hierarchical ordination is intended to be an extension of GLLVMs. What we are aiming for this a model with a response $Y_{ij}$ for rows (=sites) $i$ and columns (=species) $j$, where $Y$ is assumed to be from a distributon in the exponential family. Then $E(Y_{ij}) = g^{-1}(\eta_{ij})$. Thus far we have a standard GLM. The fun begins with $\eta$.
+
+We have a latent variable model, so 
+
+$$
+\eta_{ij} = \sum_{l=1}^L \gamma_{il} \Sigma_{ll} z_{jl}
+$$
+
+with the aim of modelling $\gamma_{il}$ and $z_{jl}$ further. We paramerterise this so that $Var(\gamma_{il}) = Var(z_{jl})=1$, and $\Sigma$ is a diagonal matrix of variances.
+
+For the moment, we are sticking to this model, and also using $L=1$.
+
+
+
+## Trying to get this to run.
+
+```{r setup}
+library(HierOrd)
+library(INLA)
+library(coda)
+# library(mcmcplots)
+
+```
+
+We will simulate some data from a Poisson distribution.
+
+```{r SimData}
+set.seed(42)
+SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma1 = 0.7, NLVs = 1,
+                       ColVar = 0, RowVar = 0,  Intercept1 = 4)
+str(SimDat)
+
+```
+
+So we have a matrix of counts, and the true row and column scores. 
+
+Next we write the formulae for the INLA models:
+
+
+The hyperparameters aren't so important at the moment. The model is just for `Roweps.LV1`, with `Wt.Roweps.LV1` as a weight: this is just the current column scores. They will be updated every iteration. `col.formula` has the same format.
+
+Now we create the linear combinations. These are $\gamma_{il}$ and $z_{jl}$, so for more complex models they will be sums of terms. We need these so that we can simulate from them directly.
+
+
+Now we run the model
+
+```{r RunMCMC}
+NBurnin <- 20
+NIter <- 100
+
+Res <-HierOrd::FitHierOrd(Y=SimDat$Counts, rowdata=NULL, coldata=NULL, nLVs = 1, 
+                  family = "Poisson", NBurnin = NBurnin, NIter = NIter, 
+                  INLAobj=FALSE)
+```
+
+
+We can check the mixing. The first variable is the one with the largest true effect, so the sign shouldn't change. The mixing looks OK, except there seems to be a negative autocorrelation. Longer runs etc. should help.
+
+```{r LookatMixing, fig.height=8, fig.width=8}
+
+plot(Res$row.mcmc[,paste0("Row", 4:6, "lv1")])
+
+# mcmcplots::caterplot(res$mcmc[,grep("Row", colnames(res$mcmc))], reorder = FALSE)
+# mcmcplots::caterplot(res$mcmc[,grep("Col", colnames(res$mcmc))], reorder = FALSE)
+
+```
+
+Now we plot against true scores. The estimates are shrunk towards 0. This might partly be the priors, and also the signs changing.
+
+```{r PotTrueRow, fig.width=8}
+RowMean <- summary(Res$row.mcmc)$statistics[,"Mean"]
+RowCI <- summary(Res$row.mcmc)$quantiles
+
+ColMean <- summary(Res$col.mcmc)$statistics[,"Mean"]
+ColCI <- summary(Res$col.mcmc)$quantiles
+
+par(mfrow=c(1,2))
+plot(SimDat$TrueRowScores, RowMean, ylim=range(RowCI), main="Row")
+segments(SimDat$TrueRowScores, RowCI[,"2.5%"], SimDat$TrueRowScores, RowCI[,"97.5%"])
+abline(0,1, col=2); abline(0,-1, col=2)
+
+plot(SimDat$TrueColScores, ColMean, ylim=range(ColCI), main="Column")
+segments(SimDat$TrueColScores, ColCI[,"2.5%"], SimDat$TrueColScores, ColCI[,"97.5%"])
+abline(0,1, col=2); abline(0,-1, col=2)
+
+
+```

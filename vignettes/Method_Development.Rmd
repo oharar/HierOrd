@@ -74,7 +74,8 @@ So we have a matrix of counts, and the true row and column scores. Next we forma
 ```{r CreateDataFrame}
 nLVs <- 1
 Family = "Poisson"
-LVdata <- CreateDataframe(mat=SimDat$Counts, row.data=SimDat$RowCov, col.data=SimDat$ColCov, nLVs=nLVs)
+LVdata <- CreateDataframe(mat=SimDat$Counts, row.data=SimDat$RowCov,
+                          col.data=SimDat$ColCov, nLVs=nLVs)
 str(LVdata)
 ```
 
@@ -95,7 +96,7 @@ The `Names` list will help in updating the model.
 Next we write the formulae for the INLA models:
 
 ```{r CreateFormulae}
- EpsHyper <- "list(prec=list(prior = \"pc.prec\", param = c(1, 0.0001)))"
+EpsHyper <- "list(prec=list(prior = \"pc.prec\", param = c(1, 0.0001)))"
 
 row.formula <- MakeFormula(nlv=nLVs, linnames=NULL, epsname="Row",
                            factprior = RowCovHyper, epsprior = EpsHyper)

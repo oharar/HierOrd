@@ -16,10 +16,14 @@
 #'@importFrom stats formula rnorm
 
 CreateDataframe <- function(mat, row.data, col.data, nLVs) {
-  nrows <- nrow(row.data)
-  ncols <- nrow(col.data)
-  if(nrows!=nrow(mat)) stop("mat should have same number of rows as row.data")
-  if(ncols!=ncol(mat)) stop("mat should have same number of columns as rows of col.data")
+  nrows <- nrow(mat)
+  ncols <- ncol(mat)
+  if(!is.null(row.data)) {
+    if(nrows!=nrow(row.data)) stop("mat should have same number of rows as row.data")
+  }
+  if(!is.null(col.data)) {
+    if(ncols!=nrow(col.data)) stop("mat should have same number of columns as rows of col.data")
+  }
 
   data.stub <- data.frame(Y = c(mat),
                           RowInd = rep(1:nrows, times=ncols),
@@ -44,15 +48,26 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   names(data.cov) <- c(names(row.data), names(col.data))
 
   # add covariates for each LV, which are passed into the models
-  list.covs <- sapply(1:nLVs, function(lv, dcov) {
-    names(dcov) <- paste0(names(dcov), ".LV", lv)
-    dcov
-  }, dcov=data.cov, simplify=FALSE)
-  data.covs <- do.call(cbind, list.covs)
+  if(nrow(data.cov)>0) {
+    list.covs <- sapply(1:nLVs, function(lv, dcov) {
+      names(dcov) <- paste0(names(dcov), ".LV", lv)
+      dcov
+    }, dcov=data.cov, simplify=FALSE)
+    data.covs <- do.call(cbind, list.covs)
+  } else {
+    data.covs <- NULL
+  }
 
+  GetNames <- function(dat) {
+    if(is.null(dat)) {
+      res <- NULL
+    } else {
+      res <- names(apply(dat, 2, is.numeric))
+    }
+    res
+  }
 
-  NumericCovs <- list(Row=names(apply(row.data, 2, is.numeric)),
-                      Col=names(apply(col.data, 2, is.numeric)))
+  NumericCovs <- list(Row=GetNames(row.data), Col=GetNames(col.data))
   FactorCovs <- list(Row=names(row.data[!names(row.data)%in%NumericCovs$Row]),
                      Col=names(col.data[!names(col.data)%in%NumericCovs$Col]))
 
@@ -80,7 +95,10 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   )
   if(!is.null(data.covwt)) data.res <- cbind(data.covwt, data.res)
 
-  data <- cbind(data.stub, data.cov, Scores, data.covs, data.res)
+  data <- cbind(data.stub, Scores, data.res)
+  if(nrow(data.cov)==nrow(data))  data <- cbind(data, data.cov)
+  if(!is.null(data.covs))  data <- cbind(data, data.covs)
+
 
   Names <- list(Response = names(data.stub)[!grepl("Ind", names(data.stub))],
                 RowColInds = names(data.stub)[grepl("Ind", names(data.stub))],

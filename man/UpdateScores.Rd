@@ -9,7 +9,7 @@ UpdateScores(scores, data, rowcol, names)
 \arguments{
 \item{scores}{Scores}
 
-\item{data}{Data}
+\item{data}{Data frame}
 
 \item{rowcol}{Row or column? Must be either "Row" or "Col"}
 
