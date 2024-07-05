@@ -10,9 +10,13 @@ FitHierOrd(
   coldata,
   nLVs = 1,
   family,
+  RowCovHyper = "list(prec=list(prior = \\"pc.prec\\", param = c(1, 0.0001)))",
   EpsHyper = "list(prec=list(prior = \\"pc.prec\\", param = c(1, 0.0001)))",
   NBurnin = 20,
   NIter = 100,
+  NChains = 1,
+  NCores = NULL,
+  parallel = TRUE,
   INLAobj = FALSE
 )
 }
@@ -33,6 +37,13 @@ FitHierOrd(
 
 \item{NIter}{Number of iterations after burnin, default 100}
 
+\item{NChains}{Number of chains to run, default 1}
+
+\item{NCores}{Number of cores to use if more than one chain is run. If NULL (the default),
+set to equal NChains.}
+
+\item{parallel}{Should the MCMC be paralellised if there is more than 1 chain? Defaults to TRUE}
+
 \item{INLAobj}{Logical, should the INLA objects be kept? Default FALSE}
 }
 \value{
@@ -43,6 +54,8 @@ Function to fit a hierarchical ordination
 }
 \details{
 Fit.a hierarchical model
+
+Parallelisation is done one chain per cluster.
 }
 \examples{
 \dontrun{

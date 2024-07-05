@@ -62,8 +62,8 @@ We will simulate some data from a Poisson distribution.
 
 ```{r SimData}
 set.seed(42)
-SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma1 = 0.7, NLVs = 1,
-                       ColVar = 0, RowVar = 0,  Intercept1 = 4)
+SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma = 0.7, NLVs = 1,
+                       ColEff = 0, RowEff = 0,  Intercept = 4)
 str(SimDat)
 
 ```

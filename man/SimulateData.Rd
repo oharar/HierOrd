@@ -4,15 +4,7 @@
 \alias{SimulateData}
 \title{Function to simulate data from a hierarchical ordination model, assuming a Poisson distribution}
 \usage{
-SimulateData(
-  NRows = 10,
-  NCols = 5,
-  NLVs = 1,
-  ColVar,
-  RowVar,
-  Sigma1,
-  Intercept1
-)
+SimulateData(NRows = 10, NCols = 5, NLVs = 1, ColEff, RowEff, Sigma, Intercept)
 }
 \arguments{
 \item{NRows}{Number of rows, defaults to 10}
@@ -21,11 +13,11 @@ SimulateData(
 
 \item{NLVs}{Number of latent variables, defaults to 1}
 
-\item{ColVar}{Vector of Column effects}
+\item{ColEff}{Vector of Column effects}
 
-\item{RowVar}{Variance of row effects}
+\item{RowEff}{Variance of row effects}
 
-\item{Sigma1}{Scale for latent variables: standard deviation}
+\item{Sigma}{Scale for latent variables: standard deviation}
 
 \item{Intercept1}{Intercept}
 }
@@ -40,5 +32,5 @@ This simulates data from a hierarchical ordination, assuming a Poisson distribut
 }
 \examples{
 SimulateData(NRows = 10, NCols = 5, NLVs = 1,
-                         ColVar=0, RowVar=0 ,Sigma1=0.1, Intercept1=1)
+                         ColEff=0, RowEff=0 ,Sigma=0.1, Intercept=1)
 }

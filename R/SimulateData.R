@@ -3,9 +3,9 @@
 #' @param NRows Number of rows, defaults to 10
 #' @param NCols Number of rows, defaults to 5
 #' @param NLVs Number of latent variables, defaults to 1
-#' @param ColVar Vector of Column effects
-#' @param RowVar Variance of row effects
-#' @param Sigma1 Scale for latent variables: standard deviation
+#' @param ColEff Vector of Column effects
+#' @param RowEff Variance of row effects
+#' @param Sigma Scale for latent variables: standard deviation
 #' @param Intercept1 Intercept
 #'
 #' @details This simulates data from a hierarchical ordination, assuming a Poisson distributed response.
@@ -14,29 +14,31 @@
 #'
 #' @examples
 #' SimulateData(NRows = 10, NCols = 5, NLVs = 1,
-#'                          ColVar=0, RowVar=0 ,Sigma1=0.1, Intercept1=1)
+#'                          ColEff=0, RowEff=0 ,Sigma=0.1, Intercept=1)
 #' @export
 #'@importFrom stats rnorm rpois
 
 SimulateData <- function(NRows = 10, NCols = 5, NLVs = 1,
-                         ColVar, RowVar, Sigma1, Intercept1) {
-  if(length(ColVar)!=NLVs) stop("ColVar should have NLVs elements")
-  if(length(RowVar)!=NLVs) stop("RowVar should have NLVs elements")
+                         ColEff, RowEff, Sigma, Intercept) {
+  if(length(ColEff)!=NLVs) stop("ColVar should have NLVs elements")
+  if(length(RowEff)!=NLVs) stop("RowVar should have NLVs elements")
 
-  ColCov1 <- stats::rnorm(NCols, 0, 1)
-  RowCov1 <- stats::rnorm(NRows, 0, 1)
+  ColCov <- stats::rnorm(NCols, 0, 1)
+  RowCov <- stats::rnorm(NRows, 0, 1)
 
-  ColScores1 <- SimTrueScores(eff=ColVar, covs=ColCov1, scale=TRUE)
-  RowScores1 <- SimTrueScores(eff=RowVar, covs=RowCov1, scale=TRUE)
+  ColScores <- SimTrueScores(eff=ColEff, covs=ColCov, scale=TRUE)
+  RowScores <- SimTrueScores(eff=RowEff, covs=RowCov, scale=TRUE)
 
-  eta.m <- Intercept1 + Sigma1*RowScores1%*%t(ColScores1)
+  eta.m <- Intercept + Sigma*RowScores%*%t(ColScores)
   Counts <- apply(eta.m, 2, function(v) stats::rpois(length(v), exp(v)))
 
-  RowCov <- data.frame(RowCovariate = RowCov1)
-  ColCov <- data.frame(ColCovariate = ColCov1)
+  RowCov <- data.frame(RowCovariate = RowCov)
+  ColCov <- data.frame(ColCovariate = ColCov)
 
   list(Counts=Counts, RowCov=RowCov, ColCov=ColCov,
-       TrueRowScores = RowScores1, TrueColScores = ColScores1)
+       TrueRowScores = RowScores, TrueColScores = ColScores,
+       pars=list(NRows = NRows, NCols = NCols, NLVs = NLVs, ColEff = ColEff,
+                 RowEff = RowEff, Sigma = Sigma, Intercept = Intercept))
 }
 
 

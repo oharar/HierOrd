@@ -22,7 +22,8 @@ MakeFormula <- function(nlv, linnames=NULL, factnames=NULL,
                         factprior="list(theta = list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE)",
                         epsprior="list(prior = \"pc.prec\", param = c(1, 0.01))",
                         epsname="") {
-  lnames <- c(sapply(linnames, paste0, ".LV", 1:nlv))
+#  lnames <- c(sapply(linnames, paste0, ".LV", 1:nlv))
+  lnames <- linnames
   fnames <- c(sapply(factnames, paste0, ".LV", 1:nlv))
   enames <- paste0(epsname, "eps.LV", 1:nlv)
 

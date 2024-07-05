@@ -1,8 +1,8 @@
 ---
-title: "HierarchicalOrdination"
+title: "HierOrdwithCovariates"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{HierarchicalOrdination}
+  %\VignetteIndexEntry{HierOrdwithCovariates}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,13 +14,10 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Introduction 
-
-This is an explanation of what is being set up. It is almost working, so if you, poor demented reader, want to debug this, please go ahead!
 
 ## The Model
 
-Hierarchical ordination is intended to be an extension of GLLVMs. What we are aiming for this a model with a response $Y_{ij}$ for rows (=sites) $i$ and columns (=species) $j$, where $Y$ is assumed to be from a distributon in the exponential family. Then $E(Y_{ij}) = g^{-1}(\eta_{ij})$. Thus far we have a standard GLM. The fun begins with $\eta$.
+This vignette includes covariates into the hierarchical ordination. We have a response $Y_{ij}$ for rows (=sites) $i$ and columns (=species) $j$, where $Y$ is assumed to be from a distribution in the exponential family. Then $E(Y_{ij}) = g^{-1}(\eta_{ij})$. Thus far we have a standard GLM. The fun begins with $\eta$.
 
 We have a latent variable model, so 
 
@@ -30,9 +27,9 @@ $$
 
 with the aim of modelling $\gamma_{il}$ and $z_{jl}$ further. We paramerterise this so that $Var(\gamma_{il}) = Var(z_{jl})=1$, and $\Sigma$ is a diagonal matrix of variances.
 
+Here we will 
+
 For the moment, we are sticking to this model, and also using $L=1$.
-
-
 
 ## Trying to get this to run.
 
@@ -49,29 +46,25 @@ We will simulate some data from a Poisson distribution.
 ```{r SimData}
 set.seed(42)
 SimDat <- SimulateData(NRows = 100, NCols = 50, Sigma = 0.6, NLVs = 1,
-                       ColEff = 0, RowEff = 0,  Intercept = 4)
+                       ColEff = 0.5, RowEff = 1,  Intercept = 4)
 str(SimDat)
 
 ```
 
-So we have a matrix of counts, and the true row and column scores. 
-
-Next we write the formulae for the INLA models:
+We have a matrix of counts, and the true row and column covariates (which are simulated from a standard normal). We also get the true row and column scores.
 
 
 The hyperparameters aren't so important at the moment. The model is just for `Roweps.LV1`, with `Wt.Roweps.LV1` as a weight: this is just the current column scores. They will be updated every iteration. `col.formula` has the same format.
-
-Now we create the linear combinations. These are $\gamma_{il}$ and $z_{jl}$, so for more complex models they will be sums of terms. We need these so that we can simulate from them directly.
-
 
 Now we run the model
 
 ```{r RunMCMC}
 
-Res <-FitHierOrd(Y=SimDat$Counts, rowdata=NULL, coldata=NULL, nLVs = 1, 
+Res <-FitHierOrd(Y=SimDat$Counts, rowdata=SimDat$RowCov, 
+                 coldata=SimDat$ColCov, nLVs = 1, 
                   family = "Poisson", NBurnin = 10, NIter = 200, NChains = 4, 
 #                  family = "Poisson", NBurnin = 1, NIter = 2, NChains = 2, 
-                  INLAobj=FALSE)
+                  INLAobj=TRUE)
 
 ```
 
@@ -109,5 +102,28 @@ plot(SimDat$TrueColScores, ColMean, ylim=range(ColCI), main="Column")
 segments(SimDat$TrueColScores, ColCI[,"2.5%"], SimDat$TrueColScores, ColCI[,"97.5%"])
 abline(0,1, col=2); abline(0,-1, col=2)
 
+
+```
+
+Now the row and column covariates.
+
+```{r RowCovResults, warning=FALSE}
+
+RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
+summary(RowMergeRes)$fixed
+```
+
+
+```{r RowCovResults}
+
+ColMergeRes <- inla.merge(do.call(c, Res$colinla))
+summary(ColMergeRes)$fixed
+
+ColMergeRes$summary.lincomb.derived
+plot(ColMergeRes$summary.lincomb.derived, ColMean)
+
+plot(SimDat$TrueColScores, ColMergeRes$summary.lincomb.derived$mean, ylim=range(ColCI), main="Column")
+# segments(SimDat$TrueColScores, ColCI[,"2.5%"], SimDat$TrueColScores, ColCI[,"97.5%"])
+abline(0,1, col=2); abline(0,-1, col=2)
 
 ```
