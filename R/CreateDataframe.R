@@ -24,6 +24,7 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   if(!is.null(col.data)) {
     if(ncols!=nrow(col.data)) stop("mat should have same number of columns as rows of col.data")
   }
+  if(is.data.frame(mat)) mat <- unlist(mat)
 
   data.stub <- data.frame(Y = c(mat),
                           RowInd = rep(1:nrows, times=ncols),
@@ -62,7 +63,7 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
     if(is.null(dat)) {
       res <- NULL
     } else {
-      res <- names(apply(dat, 2, is.numeric))
+      res <- names(dat)[unlist(lapply(dat, is.numeric), use.names = FALSE)]
     }
     res
   }
@@ -74,15 +75,26 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   #  Create data frame with weights for factors
   MakeWt <- function(nm, score) {
     wts <- score
-    colnames(wts) <- paste0("Wt.", nm, ".LV", 1:ncol(wts))
+    if(!is.vector(wts)) colnames(wts) <- paste0("Wt.", nm, ".LV", 1:ncol(wts))
     wts
   }
   # This produces a NULL if there are no row/column factors
-  RowWts <- sapply(FactorCovs$Row, MakeWt, score= Scores[,grep("^Row", colnames(Scores))], simplify=FALSE)
-  ColWts <- sapply(FactorCovs$Col, MakeWt, score= Scores[,grep("^Col", colnames(Scores))], simplify=FALSE)
-  data.rowwt <- do.call(rbind, RowWts)
-  data.colwt <- do.call(rbind, ColWts)
-  data.covwt <- cbind(data.rowwt, data.colwt)
+  if(length(FactorCovs$Row)>0) {
+    RowWts <- sapply(FactorCovs$Row, MakeWt, score= Scores[,grep("^Row", colnames(Scores))], simplify=FALSE)
+    data.rowwt <- do.call(rbind, RowWts)
+  } else {
+    RowWts <- NULL
+    data.rowwt <- NULL
+  }
+
+  if(length(FactorCovs$Col)>0) {
+    ColWts <- as.data.frame(sapply(FactorCovs$Col, MakeWt,
+                                   score= Scores[,grep("^Col", colnames(Scores))], simplify=FALSE))
+    data.colwt <- ColWts # do.call(rbind, ColWts)
+  } else {
+    ColWts <- NULL
+    data.colwt <- NULL
+  }
 
   # Create data frame with dummy covariates for residuals
   data.res <- data.frame(
@@ -93,12 +105,18 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   names(data.res) <- c(paste0("Roweps.LV", 1:nLVs), paste0("Coleps.LV", 1:nLVs),
                        paste0("Wt.Roweps.LV", 1:nLVs), paste0("Wt.Coleps.LV", 1:nLVs)
   )
-  if(!is.null(data.covwt)) data.res <- cbind(data.covwt, data.res)
+  if(!is.null(data.rowwt)) data.res <- cbind(data.rowwt, data.res)
+  if(!is.null(data.colwt)) data.res <- cbind(data.colwt, data.res)
 
   data <- cbind(data.stub, Scores, data.res)
   if(nrow(data.cov)==nrow(data))  data <- cbind(data, data.cov)
   if(!is.null(data.covs))  data <- cbind(data, data.covs)
 
+  IsLVname <- function(nm, Names) {
+    wh <- sapply(nm, function(NM, NAMES) any(grepl(gsub("\\.LV.*", "", NM), NAMES)),
+                 NAMES=Names)
+    nm[wh]
+  }
 
   Names <- list(Response = names(data.stub)[!grepl("Ind", names(data.stub))],
                 RowColInds = names(data.stub)[grepl("Ind", names(data.stub))],
@@ -114,10 +132,11 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
                                 Col = c(colnames(data.colwt),
                                         names(data.res)[grep("Wt.Col", names(data.res))])
                 ),
-                LVCovs  = list(Row = colnames(data.covs)[grep("Row", colnames(data.covs))],
-                               Col = colnames(data.covs)[grep("Col", colnames(data.covs))])
+                LVCovs  = list(Row = IsLVname(nm=colnames(data.covs), Names=colnames(row.data)),
+                               Col = IsLVname(nm=colnames(data.covs), Names=colnames(col.data)))
   )
-
   list(data=data, Names=Names, NRows = nrows, NCols = ncols, nLVs = nLVs)
 
 }
+
+

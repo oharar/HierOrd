@@ -1,0 +1,127 @@
+---
+title: "Hierarchical Ordination"
+subtitle: "An efficient (if not necessarily fast) fitting with INLA"
+author: "R.B. O'Hara & B. van der Veen"
+format: revealjs
+---
+
+# What is Model Based Ordination?
+
+## The Data
+
+Communities: $S$ species at $N$ sites
+
+Data, $Y_{is}$ are a $N \times S$ matrix. 
+
+- Assume from the exponential family 
+    - normal, Poisson, binomial etc.
+
+## The Model
+
+$$
+g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+$$ 
+
+$\sum_{l=1}^L ç z_{jl}$ means $Cov(\eta_{is}, \eta_{it}) = \sum_{l=1}^L z^2_{sl}
+
+# Concurrent Ordination
+
+What if we model the site effects, $\gamma_{il}$?
+
+$$
+\gamma_{il} = X \beta + \epsilon_{il}
+$$
+
+Without $\epsilon_{il}$ this is the same as a constrained ordination
+
+REFERENCE
+
+# Hierarchical Ordination
+
+If we can model $\gamma_{il}$, why not also model $z_{sl}$?
+
+$$
+z_{sl} = Z + \varepsilon
+$$
+
+Trait effects, phylogeny etc etc
+
+## What does this mean?
+
+
+
+# Fitting a Hierarchical Ordination
+
+Difficult!
+
+- MCMC (incl. HMC) seems to do poorly.
+
+So, let's try something different
+
+## Spot the GLM
+
+If we condition on $z_{jl}$, this is a GLM
+
+$$
+g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+$$
+
+If we condition on $\gamma_{il}$, this is a GLM
+
+$$
+g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+$$
+
+So why not draw $z_{jl}$ or $\gamma_{il}$ from their distribution, and marginalise?
+
+
+## In details
+
+Draw $z_{jl}$
+
+Fit $g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}$
+
+Simulate $\gamma_{il}$ from its posterior
+
+Fit $g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}$
+
+Simulate $z_{jl}$ from its posterior
+
+etc.
+
+## In details
+
+This is just a Gibbs sampler, but multivariate
+
+We can marginaise over the posteriors, not just draw from them.
+
+# Examples
+
+One Latent Variable
+
+# Improvements
+
+Identifiability (can we just rotate at the start?)
+
+Space, time, phylogeny
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+
+## Bullets
+
+When you click the **Render** button a document will be generated that includes:
+
+-   Content authored with markdown
+-   Output from executable code
+
+## Code
+
+When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+

@@ -1,0 +1,146 @@
+---
+title: "AntTraits"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{AntTraits}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+Load the packages and get the ant traits data from gllvm
+
+```{r setup, message=FALSE}
+library(HierOrd)
+library(INLA)
+library(gllvm)
+data("antTraits")
+```
+
+The data has abundances of `r ncol(antTraits$abund)` species of ant on `r nrow(antTraits$abund)` sites. In addition there are `r ncol(antTraits$env)` environmenral variabls and `r ncol(antTraits$traits)` traits. We scale teh 
+
+```{r}
+ScaleNumeric <- function(df) {
+  IsNum <- which(unlist(lapply(df, is.numeric), use.names = FALSE))
+   x2 <- data.frame(df)
+  x2[,IsNum] <- apply(df[,IsNum], 2, scale)
+  x2
+}
+  
+antTraits$envSc <- ScaleNumeric(antTraits$env)
+antTraits$traitsSc <- ScaleNumeric(antTraits$traits)
+Res <-FitHierOrd(Y=antTraits$abund, rowdata=antTraits$envSc, 
+                 coldata=antTraits$traitsSc, nLVs = 1, 
+                  family = "Poisson", NBurnin = 10, NIter = 100, NChains = 4, 
+#                  family = "Poisson", NBurnin = 1, NIter = 2, NChains = 2, 
+                  INLAobj=TRUE)
+```
+
+
+<details> <summary>The mixing looks OK</summary>
+
+Rows first:
+
+```{r, fig.height=8}
+plot(Res$col[,6:8])
+
+```
+
+Columns
+
+```{r, fig.height=8}
+plot(Res$col[,6:8])
+
+```
+
+</details>
+
+Now we can plot site and species scores. Sorry for the species names dropping off.
+
+
+```{r PlotTrueRow, fig.width=8, fig.height=8}
+RowMean <- summary(Res$row)$statistics[,"Mean"]
+RowCI <- summary(Res$row)$quantiles
+
+ColMean <- summary(Res$col)$statistics[,"Mean"]
+ColCI <- summary(Res$col)$quantiles
+SpNames <- gsub("  ", ". ", gsub("\\.", " ", colnames(antTraits$abund)))
+par(mfrow=c(1,2), mar=c(2,2,3,1), oma=c(2,8,0,0))
+plot(ColMean, 1:length(ColMean), xlim=range(ColCI), main="Column", yaxt="n", ann=FALSE)
+axis(2, SpNames, at=1:length(ColMean), las=1)
+segments(ColCI[,"2.5%"], 1:length(ColMean), ColCI[,"97.5%"], 1:length(ColMean))
+# abline(0,1, col=2); abline(0,-1, col=2)
+
+plot(RowMean, 1:length(RowMean), xlim=range(RowCI), main="Row", yaxt="n", ann=FALSE)
+axis(2, rownames(antTraits$abund), las=1)
+segments(RowCI[,"2.5%"], 1:length(RowMean), RowCI[,"97.5%"], 1:length(RowMean))
+# abline(0,1, col=2); abline(0,-1, col=2)
+
+
+
+```
+
+Now we can look at the covariate effects. We first merge the INLA runs, to marginalise over the row/column effects that were simulated.
+
+```{r RowCovResults, warning=FALSE}
+RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
+RowHPD.l <- lapply(RowMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
+RowHPD <- cbind(
+  At = 1:length(RowMergeRes$marginals.fixed),
+  mode = unlist(lapply(RowMergeRes$marginals.fixed, inla.mmarginal)),
+  low = unlist(lapply(RowHPD.l, function(x) x[1,"low"])),
+  high = unlist(lapply(RowHPD.l, function(x) x[1,"high"]))
+)
+dimnames(RowHPD)[[1]] <- gsub("\\.", " ", gsub(".LV.*", "", dimnames(RowHPD)[[1]]))
+```
+
+Then we plot:
+
+```{r PlotRowRes}
+par(mar=c(4.1,9,1,1))
+plot(RowHPD[-1, "mode"], RowHPD[-1, "At"], xlim=range(RowHPD[-1, c("low", "high")]),
+     ann=FALSE, axes=FALSE)
+segments(RowHPD[-1, "low"], RowHPD[-1, "At"], RowHPD[-1, "high"], RowHPD[-1, "At"])
+abline(v=0)
+axis(1)
+axis(2, dimnames(RowHPD)[[1]][-1], at=RowHPD[-1, "At"], las=1)
+
+```
+
+So feral mammal dung is either popular or unpopular, depending on the ant.
+
+Now traits. Note that Pilosity and Polymorphism should be factors.
+
+```{r ColCovResults, warning=FALSE}
+ColMergeRes <- inla.merge(do.call(c, Res$colinla))
+#Fix <- su
+mmary(ColMergeRes)$fixed
+ColHPD.l <- lapply(ColMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
+ColHPD <- cbind(
+  At = 1:length(ColMergeRes$marginals.fixed),
+  mode = unlist(lapply(ColMergeRes$marginals.fixed, inla.mmarginal)),
+  low = unlist(lapply(ColHPD.l, function(x) x[1,"low"])),
+  high = unlist(lapply(ColHPD.l, function(x) x[1,"high"]))
+)
+dimnames(ColHPD)[[1]] <- gsub("\\.", " ", gsub(".LV.*", "", dimnames(ColHPD)[[1]]))
+```
+
+And the plot show femur length has an effect, i.e. ants with long legs prefer feral mammal dung.
+
+```{r PlotColRes}
+par(mar=c(4.1,9,1,1))
+plot(ColHPD[-1, "mode"], ColHPD[-1, "At"], xlim=range(ColHPD[-1, c("low", "high")]),
+     ann=FALSE, axes=FALSE)
+segments(ColHPD[-1, "low"], ColHPD[-1, "At"], ColHPD[-1, "high"], ColHPD[-1, "At"])
+abline(v=0)
+axis(1)
+axis(2, dimnames(ColHPD)[[1]][-1], at=ColHPD[-1, "At"], las=1)
+
+```
