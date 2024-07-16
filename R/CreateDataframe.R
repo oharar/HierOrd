@@ -59,23 +59,18 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
     data.covs <- NULL
   }
 
-  GetNames <- function(dat) {
-    if(is.null(dat)) {
-      res <- NULL
-    } else {
-      res <- names(dat)[unlist(lapply(dat, is.numeric), use.names = FALSE)]
-    }
-    res
-  }
 
-  NumericCovs <- list(Row=GetNames(row.data), Col=GetNames(col.data))
-  FactorCovs <- list(Row=names(row.data[!names(row.data)%in%NumericCovs$Row]),
-                     Col=names(col.data[!names(col.data)%in%NumericCovs$Col]))
+  Classes <- list(Row=sapply(row.data, class), Col=sapply(col.data, class))
+
+  NumericCovs <- list(Row=names(Classes$Row)[Classes$Row%in%c("numeric", "integer")],
+                      Col=names(Classes$Col)[Classes$Col%in%c("numeric", "integer")])
+  FactorCovs <- list(Row=names(Classes$Row)[Classes$Row=="factor"],
+                      Col=names(Classes$Col)[Classes$Col=="factor"])
 
   #  Create data frame with weights for factors
   MakeWt <- function(nm, score) {
     wts <- score
-    if(!is.vector(wts)) colnames(wts) <- paste0("Wt.", nm, ".LV", 1:ncol(wts))
+    attr(wts, "name") <- paste0("Wt.", nm, ".LV", 1)
     wts
   }
   # This produces a NULL if there are no row/column factors
@@ -88,9 +83,10 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   }
 
   if(length(FactorCovs$Col)>0) {
-    ColWts <- as.data.frame(sapply(FactorCovs$Col, MakeWt,
-                                   score= Scores[,grep("^Col", colnames(Scores))], simplify=FALSE))
-    data.colwt <- ColWts # do.call(rbind, ColWts)
+    ColWts <- sapply(FactorCovs$Col, MakeWt,
+                                   score= Scores[,grep("^Col", colnames(Scores))], simplify=FALSE)
+    names(ColWts) <- lapply(ColWts, attr, "name")
+    data.colwt <- as.data.frame(ColWts)
   } else {
     ColWts <- NULL
     data.colwt <- NULL
@@ -113,7 +109,7 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
   if(!is.null(data.covs))  data <- cbind(data, data.covs)
 
   IsLVname <- function(nm, Names) {
-    wh <- sapply(nm, function(NM, NAMES) any(grepl(gsub("\\.LV.*", "", NM), NAMES)),
+    wh <- sapply(nm, function(NM, NAMES) gsub("\\.LV.*", "", NM)%in%NAMES,
                  NAMES=Names)
     nm[wh]
   }
@@ -132,10 +128,16 @@ CreateDataframe <- function(mat, row.data, col.data, nLVs) {
                                 Col = c(colnames(data.colwt),
                                         names(data.res)[grep("Wt.Col", names(data.res))])
                 ),
-                LVCovs  = list(Row = IsLVname(nm=colnames(data.covs), Names=colnames(row.data)),
-                               Col = IsLVname(nm=colnames(data.covs), Names=colnames(col.data)))
+                LVCovs  = list(
+                  Numeric = list(Row = IsLVname(nm=colnames(data.covs), Names=NumericCovs$Row),
+                                      Col = IsLVname(nm=colnames(data.covs), Names=NumericCovs$Col)),
+                  Factor = list(Row = IsLVname(nm=colnames(data.covs), Names=FactorCovs$Row),
+                                     Col = IsLVname(nm=colnames(data.covs), Names=FactorCovs$Col))
+                )
   )
-  list(data=data, Names=Names, NRows = nrows, NCols = ncols, nLVs = nLVs)
+
+
+    list(data=data, Names=Names, NRows = nrows, NCols = ncols, nLVs = nLVs)
 
 }
 

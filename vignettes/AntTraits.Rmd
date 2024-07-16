@@ -24,7 +24,7 @@ library(gllvm)
 data("antTraits")
 ```
 
-The data has abundances of `r ncol(antTraits$abund)` species of ant on `r nrow(antTraits$abund)` sites. In addition there are `r ncol(antTraits$env)` environmenral variabls and `r ncol(antTraits$traits)` traits. We scale teh 
+The data has abundances of `r ncol(antTraits$abund)` species of ant on `r nrow(antTraits$abund)` sites. In addition there are `r ncol(antTraits$env)` environmenral variabls and `r ncol(antTraits$traits)` traits. We scale the 
 
 ```{r}
 ScaleNumeric <- function(df) {
@@ -33,7 +33,14 @@ ScaleNumeric <- function(df) {
   x2[,IsNum] <- apply(df[,IsNum], 2, scale)
   x2
 }
-  
+ 
+# in FitHierOrd(), these lines need to have covariates & factors passed to them correctly:
+# Might have to re-write CreateDataframe() to change output
+# row.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Row, epsname="Row",
+#                              factprior = RowCovHyper, epsprior = EpsHyper)
+#   col.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Col, epsname="Col",
+#                              factprior = RowCovHyper, epsprior = EpsHyper)
+
 antTraits$envSc <- ScaleNumeric(antTraits$env)
 antTraits$traitsSc <- ScaleNumeric(antTraits$traits)
 Res <-FitHierOrd(Y=antTraits$abund, rowdata=antTraits$envSc, 
@@ -41,6 +48,22 @@ Res <-FitHierOrd(Y=antTraits$abund, rowdata=antTraits$envSc,
                   family = "Poisson", NBurnin = 10, NIter = 100, NChains = 4, 
 #                  family = "Poisson", NBurnin = 1, NIter = 2, NChains = 2, 
                   INLAobj=TRUE)
+
+RowMergeRes1 <- inla.merge(Res$rowinla[[1]])
+RowMergeRes2 <- inla.merge(Res$rowinla[[1]])
+RowMergeRes3 <- inla.merge(Res$rowinla[[1]])
+RowMergeRes4 <- inla.merge(Res$rowinla[[1]])
+RowMergeRes <- inla.merge(list(RowMergeRes1, RowMergeRes2, RowMergeRes3, RowMergeRes4))
+
+ColMergeRes1 <- inla.merge(Res$colinla[[1]])
+ColMergeRes2 <- inla.merge(Res$colinla[[2]])
+ColMergeRes3 <- inla.merge(Res$colinla[[3]])
+ColMergeRes4 <- inla.merge(Res$colinla[[4]])
+ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
+rm(RowMergeRes1, RowMergeRes2, RowMergeRes3, RowMergeRes4, RowMergeRes5,
+   ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4, ColMergeRes5)
+
+save(Res, RowMergeRes, ColMergeRes, file="../inst/AntsRes.RData")
 ```
 
 
@@ -90,7 +113,7 @@ segments(RowCI[,"2.5%"], 1:length(RowMean), RowCI[,"97.5%"], 1:length(RowMean))
 Now we can look at the covariate effects. We first merge the INLA runs, to marginalise over the row/column effects that were simulated.
 
 ```{r RowCovResults, warning=FALSE}
-RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
+# RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
 RowHPD.l <- lapply(RowMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
 RowHPD <- cbind(
   At = 1:length(RowMergeRes$marginals.fixed),
@@ -114,14 +137,14 @@ axis(2, dimnames(RowHPD)[[1]][-1], at=RowHPD[-1, "At"], las=1)
 
 ```
 
-So feral mammal dung is either popular or unpopular, depending on the ant.
+Which suggests that shrub cover has an effect: more cover, more of some stuff.
 
 Now traits. Note that Pilosity and Polymorphism should be factors.
 
 ```{r ColCovResults, warning=FALSE}
-ColMergeRes <- inla.merge(do.call(c, Res$colinla))
-#Fix <- su
-mmary(ColMergeRes)$fixed
+
+# ColMergeRes <- inla.merge(do.call(c, Res$colinla))
+#Fix <- summary(ColMergeRes)$fixed
 ColHPD.l <- lapply(ColMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
 ColHPD <- cbind(
   At = 1:length(ColMergeRes$marginals.fixed),

@@ -341,42 +341,48 @@ R.B. O’Hara &amp; B. van der Veen
 <section>
 <section id="what-is-model-based-ordination" class="title-slide slide level1 center">
 <h1>What is Model Based Ordination?</h1>
-
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+</div>
 </section>
 <section id="the-data" class="slide level2">
 <h2>The Data</h2>
 <p>Communities: <span class="math inline">\(S\)</span> species at <span class="math inline">\(N\)</span> sites</p>
-<p>Data, <span class="math inline">\(Y_{is}\)</span> are a <span class="math inline">\(N \times S\)</span> matrix.</p>
-<ul>
-<li>Assume from the exponential family
-<ul>
-<li>normal, Poisson, binomial etc.</li>
-</ul></li>
-</ul>
+<p>Data <span class="math inline">\(y_{ij}\)</span> (<span class="math inline">\(i=1 \dots n\)</span>, <span class="math inline">\(j=1 \dots p\)</span>)</p>
+</section>
+<section id="the-model-i-the-glm-bit" class="slide level2">
+<h2>The Model I: the GLM bit</h2>
+<p>Assume from the exponential family - normal, Poisson, binomial etc.</p>
+<p><span class="math inline">\(g(E(y_{ij})) = \eta_{ij}\)</span> - <span class="math inline">\(g()\)</span> is a link function</p>
+<p><span class="math inline">\(\eta_{ij} = \alpha_i + \beta_j + \omega_{ij}\)</span></p>
+<p>We can make <span class="math inline">\(\alpha_i + \beta_j\)</span> more complex, but we put the complexity on <span class="math inline">\(\omega_{ij}\)</span></p>
 </section>
 <section id="the-model" class="slide level2">
 <h2>The Model</h2>
 <p><span class="math display">\[
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+g(E(Y_{is})) = \alpha_i + \beta_j + \omega_{ij} \\
+\omega_{ij} = \sum_{l=1}^L z_{il} \Sigma_{ll} \gamma_{jl}
 \]</span></p>
-<p><span class="math inline">\(\sum_{l=1}^L ç z_{jl}\)</span> means $Cov(<em>{is}, </em>{it}) = <em>{l=1}^L z^2</em>{sl}</p>
-</section></section>
-<section id="concurrent-ordination" class="title-slide slide level1 center">
-<h1>Concurrent Ordination</h1>
-<p>What if we model the site effects, <span class="math inline">\(\gamma_{il}\)</span>?</p>
-<p><span class="math display">\[
-\gamma_{il} = X \beta + \epsilon_{il}
-\]</span></p>
-<p>Without <span class="math inline">\(\epsilon_{il}\)</span> this is the same as a constrained ordination</p>
-<p>REFERENCE</p>
+<p>With <span class="math inline">\(\text{Var}(z_{il}) = \text{Var}(\gamma_{jl}) = 1\)</span></p>
+<p>So <span class="math inline">\(\text{Var}(\omega_{ij}) = \sum_{l=1}^L \Sigma_{ll}\)</span></p>
+<p>And <span class="math inline">\(\text{Cov}(\omega_{is}, \omega_{it}) = \sum_{l=1}^L \gamma_{sl}\gamma_{tl}\)</span></p>
 </section>
-
-<section>
-<section id="hierarchical-ordination" class="title-slide slide level1 center">
-<h1>Hierarchical Ordination</h1>
-<p>If we can model <span class="math inline">\(\gamma_{il}\)</span>, why not also model <span class="math inline">\(z_{sl}\)</span>?</p>
+<section id="concurrent-ordination" class="slide level2">
+<h2>Concurrent Ordination</h2>
+<p>What if we model the site effects, <span class="math inline">\(z_{il}\)</span>?</p>
 <p><span class="math display">\[
-z_{sl} = Z + \varepsilon
+z_{il} = \sum_{k=1}^K X_{ik} \phi_{kl} + \varepsilon_{il}
+\]</span></p>
+<p>Without <span class="math inline">\(\varepsilon_{il}\)</span> this is the same as a constrained ordination.</p>
+
+<img data-src="ConCurrentOrd.png" class="r-stretch"></section>
+<section id="hierarchical-ordination" class="slide level2">
+<h2>Hierarchical Ordination</h2>
+<p>If we can model <span class="math inline">\(z_{il}\)</span>, why not also model <span class="math inline">\(\gamma_{jl}\)</span>?</p>
+<p><span class="math display">\[
+\gamma_{jl} = \sum_{s=1}^S X_{js} \omega_{sl} + \epsilon_{jl}
 \]</span></p>
 <p>Trait effects, phylogeny etc etc</p>
 </section>
@@ -394,39 +400,109 @@ z_{sl} = Z + \varepsilon
 </section>
 <section id="spot-the-glm" class="slide level2">
 <h2>Spot the GLM</h2>
-<p>If we condition on <span class="math inline">\(z_{jl}\)</span>, this is a GLM</p>
+<p>If we condition on <span class="math inline">\(z_{jl}\)</span>, this is a GLM (1 LV for simplicity)</p>
 <p><span class="math display">\[
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+g(E(Y_{is})) = \alpha_i + \beta_j + textcolor{red}{z_{i}} (\Sigma_{ll} \gamma_{j})
 \]</span></p>
 <p>If we condition on <span class="math inline">\(\gamma_{il}\)</span>, this is a GLM</p>
 <p><span class="math display">\[
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}
 \]</span></p>
-<p>So why not draw <span class="math inline">\(z_{jl}\)</span> or <span class="math inline">\(\gamma_{il}\)</span> from their distribution, and marginalise?</p>
+<p>So we can draw <span class="math inline">\(z_{jl}\)</span> or <span class="math inline">\(\gamma_{il}\)</span> from their distribution, and marginalise?</p>
 </section>
 <section id="in-details" class="slide level2">
 <h2>In details</h2>
 <p>Draw <span class="math inline">\(z_{jl}\)</span></p>
-<p>Fit <span class="math inline">\(g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}\)</span></p>
+<ul>
+<li>Fit <span class="math inline">\(g(E(Y_{is})) = \alpha_i + \beta_j + z_{i} (\Sigma_{ll} \gamma_{j})\)</span></li>
+</ul>
 <p>Simulate <span class="math inline">\(\gamma_{il}\)</span> from its posterior</p>
-<p>Fit <span class="math inline">\(g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}\)</span></p>
+<ul>
+<li>Fit <span class="math inline">\(g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}\)</span></li>
+</ul>
 <p>Simulate <span class="math inline">\(z_{jl}\)</span> from its posterior</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+</div>
 <p>etc.</p>
 </section>
 <section id="in-details-1" class="slide level2">
 <h2>In details</h2>
-<p>This is just a Gibbs sampler, but multivariate</p>
+<p>This is just a multivariate Gibbs sampler</p>
+<ul>
+<li>up to the INLA approximations</li>
+</ul>
 <p>We can marginaise over the posteriors, not just draw from them.</p>
-</section></section>
-<section id="examples" class="title-slide slide level1 center">
-<h1>Examples</h1>
-
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+</div>
 </section>
+<section id="example-ant-traits" class="slide level2">
+<h2>Example: Ant traits</h2>
+<p>From the <code>gllvm</code> package</p>
+<ul>
+<li>41 species of ant</li>
+<li>30 sites</li>
+<li>5 environmental variabls and</li>
+<li>5 traits</li>
+</ul>
+<p>Use 1 latent variable</p>
+</section>
+<section id="good-mixing" class="slide level2">
+<h2>Good Mixing</h2>
 
+<img data-src="HOISEC2024_files/figure-revealjs/unnamed-chunk-5-1.png" width="960" class="r-stretch"><p>100 iterations, Camponotus.nigriceps</p>
+</section>
+<section id="good-density" class="slide level2">
+<h2>Good Density</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="HOISEC2024_files/figure-revealjs/unnamed-chunk-6-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="HOISEC2024_files/figure-revealjs/unnamed-chunk-6-2.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="site-species-scores" class="slide level2">
+<h2>Site &amp; species scores</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="HOISEC2024_files/figure-revealjs/PlotTrueRow-1.png" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="HOISEC2024_files/figure-revealjs/unnamed-chunk-7-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Mixing One Latent Variable</p>
+</section></section>
 <section>
 <section id="improvements" class="title-slide slide level1 center">
 <h1>Improvements</h1>
-
+<p>Identifiability (can we just rotate at the start?)</p>
+<p>Space, time, phylogeny</p>
 </section>
 <section id="quarto" class="slide level2">
 <h2>Quarto</h2>
@@ -443,11 +519,6 @@ g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{j
 <section id="code" class="slide level2">
 <h2>Code</h2>
 <p>When you click the <strong>Render</strong> button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:</p>
-<div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
-</div>
-</div>
 <div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 

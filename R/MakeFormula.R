@@ -19,17 +19,18 @@
 
 MakeFormula <- function(nlv, linnames=NULL, factnames=NULL,
                         #                        linprior="list(theta = list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE)",
-                        factprior="list(theta = list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE)",
+                        factprior="list(theta = list(prec = \"loggamma\", param = c(1, 1), initial = 1, fixed = TRUE))",
                         epsprior="list(prior = \"pc.prec\", param = c(1, 0.01))",
                         epsname="") {
 #  lnames <- c(sapply(linnames, paste0, ".LV", 1:nlv)) # .LV passed into function
   lnames <- linnames
-  fnames <- c(sapply(factnames, paste0, ".LV", 1:nlv))
+#  fnames <- c(sapply(factnames, paste0, ".LV", 1:nlv))
+  fnames <- factnames
   enames <- paste0(epsname, "eps.LV", 1:nlv)
 
   lform <- sapply(lnames, function(nm) paste0("f(", nm, ", model=\"linear\", mean.linear=0, prec.linear=1)"))
   fform <- sapply(fnames, function(nm) paste0("f(", nm, ", Wt.", nm,
-                                              ", model=\"iid\", hyper=list(theta = ", factprior, ")"))
+                                              ", model=\"iid\", hyper=list(theta = ", factprior, "))"))
   eform <- paste0("f(", epsname, "eps.LV", 1:nlv, ", Wt.", epsname, "eps.LV", 1:nlv,
                   ", model=\"iid\", hyper=list(prec = ", epsprior, "))")
 

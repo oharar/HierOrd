@@ -19,6 +19,7 @@
 
 MakeLincomb <- function(covs, lvname="LV1", lcname="lc", epsname="eps", N=NULL) {
   if(!is.null(covs)) {
+    if(!is.data.frame(covs)) stop("covs must be a data frame")
     names(covs) <- paste(names(covs), lvname, sep=".")
     N <- nrow(covs)
   }

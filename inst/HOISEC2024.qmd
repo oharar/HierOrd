@@ -7,41 +7,62 @@ format: revealjs
 
 # What is Model Based Ordination?
 
+```{r}
+1 + 1
+```
+
 ## The Data
 
 Communities: $S$ species at $N$ sites
 
-Data, $Y_{is}$ are a $N \times S$ matrix. 
+Data $y_{ij}$ ($i=1 \dots n$, $j=1 \dots p$)
 
-- Assume from the exponential family 
+
+## The Model I: the GLM bit
+
+Assume from the exponential family 
     - normal, Poisson, binomial etc.
+
+$g(E(y_{ij})) = \eta_{ij}$ 
+    - $g()$ is a link function
+
+$\eta_{ij} = \alpha_i + \beta_j + \omega_{ij}$
+
+We can make $\alpha_i + \beta_j$ more complex, but we put the complexity on $\omega_{ij}$
 
 ## The Model
 
+
 $$
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+g(E(Y_{is})) = \alpha_i + \beta_j + \omega_{ij} \\
+\omega_{ij} = \sum_{l=1}^L z_{il} \Sigma_{ll} \gamma_{jl}
 $$ 
 
-$\sum_{l=1}^L ç z_{jl}$ means $Cov(\eta_{is}, \eta_{it}) = \sum_{l=1}^L z^2_{sl}
+With $\text{Var}(z_{il}) = \text{Var}(\gamma_{jl}) = 1$
 
-# Concurrent Ordination
+So $\text{Var}(\omega_{ij}) = \sum_{l=1}^L \Sigma_{ll}$
 
-What if we model the site effects, $\gamma_{il}$?
+And  $\text{Cov}(\omega_{is}, \omega_{it}) = \sum_{l=1}^L \gamma_{sl}\gamma_{tl}$
 
-$$
-\gamma_{il} = X \beta + \epsilon_{il}
-$$
+## Concurrent Ordination
 
-Without $\epsilon_{il}$ this is the same as a constrained ordination
-
-REFERENCE
-
-# Hierarchical Ordination
-
-If we can model $\gamma_{il}$, why not also model $z_{sl}$?
+What if we model the site effects, $z_{il}$?
 
 $$
-z_{sl} = Z + \varepsilon
+z_{il} = \sum_{k=1}^K X_{ik} \phi_{kl} + \varepsilon_{il}
+$$
+
+Without $\varepsilon_{il}$ this is the same as a constrained ordination.
+
+![](ConCurrentOrd.png)
+
+
+## Hierarchical Ordination
+
+If we can model $z_{il}$, why not also model $\gamma_{jl}$?
+
+$$
+\gamma_{jl} = \sum_{s=1}^S X_{js} \omega_{sl} + \epsilon_{jl}
 $$
 
 Trait effects, phylogeny etc etc
@@ -60,43 +81,139 @@ So, let's try something different
 
 ## Spot the GLM
 
-If we condition on $z_{jl}$, this is a GLM
+If we condition on $z_{jl}$, this is a GLM (1 LV for simplicity)
 
 $$
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
-$$
+g(E(Y_{is})) = \alpha_i + \beta_j + textcolor{red}{z_{i}} (\Sigma_{ll} \gamma_{j})
+$$ 
 
 If we condition on $\gamma_{il}$, this is a GLM
 
 $$
-g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}
+g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}
 $$
 
-So why not draw $z_{jl}$ or $\gamma_{il}$ from their distribution, and marginalise?
+So we can draw $z_{jl}$ or $\gamma_{il}$ from their distribution, and marginalise?
 
 
 ## In details
 
 Draw $z_{jl}$
 
-Fit $g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}$
+- Fit $g(E(Y_{is})) = \alpha_i + \beta_j + z_{i} (\Sigma_{ll} \gamma_{j})$
 
 Simulate $\gamma_{il}$ from its posterior
 
-Fit $g(E(Y_{is})) = \eta_{ij} = \alpha_i + \beta_{is} + \sum_{l=1}^L \gamma_{il} z_{jl}$
+- Fit $g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}$
 
 Simulate $z_{jl}$ from its posterior
+
+```{r}
+1 + 1
+```
 
 etc.
 
 ## In details
 
-This is just a Gibbs sampler, but multivariate
+This is just a multivariate Gibbs sampler
+
+- up to the INLA approximations
 
 We can marginaise over the posteriors, not just draw from them.
 
-# Examples
+```{r}
+1 + 1
+```
 
+## Example: Ant traits
+
+From the `gllvm` package
+
+
+```{r}
+#| echo: false
+#| warning: false
+load("AntsRes.RData")
+library(gllvm)
+library(INLA)
+data("antTraits")
+
+ColMergeRes1 <- inla.merge(Res$colinla[[1]])
+ColMergeRes2 <- inla.merge(Res$colinla[[2]])
+ColMergeRes3 <- inla.merge(Res$colinla[[3]])
+ColMergeRes4 <- inla.merge(Res$colinla[[4]])
+ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
+rm(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4)
+save(Res, ColMergeRes, file="../inst/AntsRes.RData")
+
+```
+
+- `r ncol(antTraits$abund)` species of ant 
+- `r nrow(antTraits$abund)` sites
+- `r ncol(antTraits$env)` environmental variabls and 
+- `r ncol(antTraits$traits)` traits
+
+Use 1 latent variable
+
+## Good Mixing
+
+```{r}
+
+plot(Res$col[,6])
+
+```
+
+100 iterations, `r colnames(antTraits$abund)[6]`
+
+## Good Density
+
+```{r}
+
+par(mfrow=c(1,2))
+
+c6 <- c(unlist(lapply(Res$col, function(l) l[,"Col3lv1"])))
+plot(density(c6))
+lines(ColMergeRes$marginals.lincomb.derived$lc3.LV1, col=2)
+
+plot(ColMergeRes$marginals.lincomb.derived[[6]], type="l")
+
+```
+
+
+## Site & species scores
+
+```{r PlotTrueRow, fig.width=8, fig.height=8}
+RowMean <- summary(Res$row)$statistics[,"Mean"]
+RowCI <- summary(Res$row)$quantiles
+
+ColMean <- summary(Res$col)$statistics[,"Mean"]
+ColCI <- summary(Res$col)$quantiles
+SpNames <- gsub("  ", ". ", gsub("\\.", " ", colnames(antTraits$abund)))
+par(mfrow=c(1,2), mar=c(2,2,3,1), oma=c(2,8,0,0))
+plot(ColMean, 1:length(ColMean), xlim=range(ColCI), main="Column", yaxt="n", ann=FALSE)
+axis(2, SpNames, at=1:length(ColMean), las=1)
+segments(ColCI[,"2.5%"], 1:length(ColMean), ColCI[,"97.5%"], 1:length(ColMean))
+# abline(0,1, col=2); abline(0,-1, col=2)
+
+plot(RowMean, 1:length(RowMean), xlim=range(RowCI), main="Row", yaxt="n", ann=FALSE)
+axis(2, rownames(antTraits$abund), las=1)
+segments(RowCI[,"2.5%"], 1:length(RowMean), RowCI[,"97.5%"], 1:length(RowMean))
+# abline(0,1, col=2); abline(0,-1, col=2)
+
+
+
+```
+
+
+```{r}
+
+plot(Res$col[,6], trace=FALSE)
+
+```
+
+
+Mixing
 One Latent Variable
 
 # Improvements
@@ -120,8 +237,5 @@ When you click the **Render** button a document will be generated that includes:
 
 When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
 
-```{r}
-1 + 1
-```
 
 

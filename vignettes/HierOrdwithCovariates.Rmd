@@ -59,7 +59,6 @@ The hyperparameters aren't so important at the moment. The model is just for `Ro
 Now we run the model
 
 ```{r RunMCMC}
-
 Res <-FitHierOrd(Y=SimDat$Counts, rowdata=SimDat$RowCov, 
                  coldata=SimDat$ColCov, nLVs = 1, 
                   family = "Poisson", NBurnin = 10, NIter = 200, NChains = 4, 
@@ -109,14 +108,30 @@ Now the row and column covariates.
 
 ```{r RowCovResults, warning=FALSE}
 
-RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
+RowMergeRes1 <- inla.merge(Res$rowinla[[1]])
+RowMergeRes2 <- inla.merge(Res$rowinla[[2]])
+RowMergeRes3 <- inla.merge(Res$rowinla[[3]])
+RowMergeRes4 <- inla.merge(Res$rowinla[[4]])
+RowMergeRes <- inla.merge(list(RowMergeRes1, RowMergeRes2, RowMergeRes3, RowMergeRes4))
+
+# In theory we could do either of these. But they eat memory, and complain about malloc stack logging
+# The memory eating is also very slow.
+# RowMergeRes.lst <- lapply(Res$rowinla, inla.merge)
+# RowMergeRes <- inla.merge(RowMergeRes.lst)
+# RowMergeRes <- inla.merge(do.call(c, Res$rowinla))
+
 summary(RowMergeRes)$fixed
 ```
 
 
 ```{r RowCovResults}
 
-ColMergeRes <- inla.merge(do.call(c, Res$colinla))
+ColMergeRes1 <- inla.merge(Res$colinla[[1]])
+ColMergeRes2 <- inla.merge(Res$colinla[[2]])
+ColMergeRes3 <- inla.merge(Res$colinla[[3]])
+ColMergeRes4 <- inla.merge(Res$colinla[[4]])
+ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
+
 summary(ColMergeRes)$fixed
 
 ColMergeRes$summary.lincomb.derived

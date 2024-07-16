@@ -41,13 +41,25 @@ FitHierOrd <- function(Y, rowdata, coldata, nLVs = 1, family,
   data <- CreateDataframe(mat=Y, row.data=rowdata, col.data=coldata, nLVs=nLVs)
 
 # Create row and column formulae
-  row.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Row, epsname="Row",
+  row.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Numeric$Row, epsname="Row",
+                             factnames = data$Names$LVCovs$Factor$Row,
                              factprior = RowCovHyper, epsprior = EpsHyper)
-  col.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Col, epsname="Col",
+  col.formula <- MakeFormula(nlv=nLVs, linnames=data$Names$LVCovs$Numeric$Col,
+                             factnames = data$Names$LVCovs$Factor$Col,
+                             epsname="Col",
                              factprior = RowCovHyper, epsprior = EpsHyper)
 
-  RowLinComb <- MakeLincombs(covar.df =NULL, EpsName = "Roweps", nlv =nLVs, N=data$NRows)
-  ColLinComb <- MakeLincombs(covar.df =NULL, EpsName = "Coleps", nlv = nLVs, N=data$NCols)
+  RowEffs <- c(data$Names$NumericCovs$Row, data$Names$FactorCovs$Row)
+  ColEffs <- c(data$Names$NumericCovs$Col, data$Names$FactorCovs$Col)
+  covar.df.row <- as.data.frame(data$data[data$data$ColInd==1,RowEffs])
+  names(covar.df.row) <- RowEffs
+  RowLinComb <- MakeLincombs(covar.df = covar.df.row,
+                             EpsName = "Roweps", nlv =nLVs, N=data$NRows)
+  covar.df.col <- as.data.frame(data$data[data$data$RowInd==1, ColEffs])
+  names(covar.df.col) <- ColEffs
+  ColLinComb <- MakeLincombs(covar.df = covar.df.col,
+                             EpsName = "Coleps",
+                             nlv = nLVs, N=data$NCols)
 
   # which row to fix sign (use maximum)
 #  RowSign <- which(SimDat$TrueRowScores==max(SimDat$TrueRowScores))
