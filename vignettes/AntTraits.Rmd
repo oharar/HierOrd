@@ -60,10 +60,11 @@ ColMergeRes2 <- inla.merge(Res$colinla[[2]])
 ColMergeRes3 <- inla.merge(Res$colinla[[3]])
 ColMergeRes4 <- inla.merge(Res$colinla[[4]])
 ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
-rm(RowMergeRes1, RowMergeRes2, RowMergeRes3, RowMergeRes4, RowMergeRes5,
-   ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4, ColMergeRes5)
+rm(RowMergeRes1, RowMergeRes2, RowMergeRes3, RowMergeRes4, 
+   ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4)
 
 save(Res, RowMergeRes, ColMergeRes, file="../inst/AntsRes.RData")
+
 ```
 
 
@@ -142,17 +143,30 @@ Which suggests that shrub cover has an effect: more cover, more of some stuff.
 Now traits. Note that Pilosity and Polymorphism should be factors.
 
 ```{r ColCovResults, warning=FALSE}
-
 # ColMergeRes <- inla.merge(do.call(c, Res$colinla))
 #Fix <- summary(ColMergeRes)$fixed
-ColHPD.l <- lapply(ColMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
+ColFixedHPD.l <- lapply(ColMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
+ColRandHPD.l <- lapply(ColMergeRes$marginals.random[1:2], function(lst) 
+  lapply(lst, function(marg, p) inla.hpdmarginal(p, marg), p=0.95))
+
+ColRandHPD.l2 <- do.call(c, unlist(ColRandHPD.l, recursive=FALSE))
+
+ColRandmode <- unlist(lapply(ColMergeRes$marginals.random[1:2], function(lst) 
+  lapply(lst, inla.mmarginal)))
+
 ColHPD <- cbind(
-  At = 1:length(ColMergeRes$marginals.fixed),
-  mode = unlist(lapply(ColMergeRes$marginals.fixed, inla.mmarginal)),
-  low = unlist(lapply(ColHPD.l, function(x) x[1,"low"])),
-  high = unlist(lapply(ColHPD.l, function(x) x[1,"high"]))
+  At = 1:(length(ColMergeRes$marginals.fixed)+length(ColRandmode)),
+  mode = c(unlist(lapply(ColMergeRes$marginals.fixed, inla.mmarginal)),
+           unlist(ColRandmode)),
+  low = unlist(c(lapply(ColFixedHPD.l, function(x) x[1,"low"]),
+                 lapply(ColRandHPD.l, lapply, function(x) x[1,"low"]))),
+  high = unlist(c(lapply(ColFixedHPD.l, function(x) x[1,"high"]),
+                 lapply(ColRandHPD.l, lapply, function(x) x[1,"high"])))
 )
+
 dimnames(ColHPD)[[1]] <- gsub("\\.", " ", gsub(".LV.*", "", dimnames(ColHPD)[[1]]))
+dimnames(ColHPD)[[1]][grep("Pilos", dimnames(ColHPD)[[1]])] <- paste(dimnames(ColHPD)[[1]][grep("Pilos", dimnames(ColHPD)[[1]])], 1:4, sep=" ")
+dimnames(ColHPD)[[1]][grep("Poly", dimnames(ColHPD)[[1]])] <- paste(dimnames(ColHPD)[[1]][grep("Poly", dimnames(ColHPD)[[1]])], 1:3, sep=" ")
 ```
 
 And the plot show femur length has an effect, i.e. ants with long legs prefer feral mammal dung.
@@ -167,3 +181,5 @@ axis(1)
 axis(2, dimnames(ColHPD)[[1]][-1], at=ColHPD[-1, "At"], las=1)
 
 ```
+
+

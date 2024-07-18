@@ -2,14 +2,10 @@
 title: "Hierarchical Ordination"
 subtitle: "An efficient (if not necessarily fast) fitting with INLA"
 author: "R.B. O'Hara & B. van der Veen"
-format: revealjs
+format: beamer
 ---
 
-# What is Model Based Ordination?
-
-```{r}
-1 + 1
-```
+## What is Model Based Ordination?
 
 ## The Data
 
@@ -17,32 +13,47 @@ Communities: $S$ species at $N$ sites
 
 Data $y_{ij}$ ($i=1 \dots n$, $j=1 \dots p$)
 
+$$
+\begin{pmatrix}
+0 & 5 & 13\\
+2 & 7 & 4\\
+\end{pmatrix} = 
+\begin{pmatrix}
+y_{11} & y_{12} & y_{13}\\
+y_{21} & y_{22} & y_{23}\\
+\end{pmatrix} 
+$$
 
 ## The Model I: the GLM bit
 
 Assume from the exponential family 
-    - normal, Poisson, binomial etc.
+
+- normal, Poisson, binomial etc.
 
 $g(E(y_{ij})) = \eta_{ij}$ 
-    - $g()$ is a link function
 
-$\eta_{ij} = \alpha_i + \beta_j + \omega_{ij}$
+- $g()$ is a link function
 
-We can make $\alpha_i + \beta_j$ more complex, but we put the complexity on $\omega_{ij}$
+$\eta_{ij} = \alpha_i + \beta_j + \omicron_{ij}$
+
+We can make $\alpha_i + \beta_j$ more complex, but we put the complexity on $\omicron_{ij}$
 
 ## The Model
 
-
 $$
-g(E(Y_{is})) = \alpha_i + \beta_j + \omega_{ij} \\
-\omega_{ij} = \sum_{l=1}^L z_{il} \Sigma_{ll} \gamma_{jl}
+\begin{aligned}
+g(E(Y_{is})) &= \alpha_i + \beta_j + \omicron_{ij} \\
+\omicron_{ij} &= \sum_{l=1}^L z_{il} \Sigma_{ll} \gamma_{jl}
+\end{aligned}
 $$ 
+
 
 With $\text{Var}(z_{il}) = \text{Var}(\gamma_{jl}) = 1$
 
-So $\text{Var}(\omega_{ij}) = \sum_{l=1}^L \Sigma_{ll}$
+So $\text{Var}(\omicron_{ij}) = \sum_{l=1}^L \Sigma_{ll}$
 
-And  $\text{Cov}(\omega_{is}, \omega_{it}) = \sum_{l=1}^L \gamma_{sl}\gamma_{tl}$
+And  $\text{Corr}(\omicron_{is}, \omicron_{it}) = \sum_{l=1}^L \gamma_{sl}\gamma_{tl}$
+
 
 ## Concurrent Ordination
 
@@ -52,7 +63,7 @@ $$
 z_{il} = \sum_{k=1}^K X_{ik} \phi_{kl} + \varepsilon_{il}
 $$
 
-Without $\varepsilon_{il}$ this is the same as a constrained ordination.
+With $\varepsilon_{il}=0$ this is the same as a constrained ordination.
 
 ![](ConCurrentOrd.png)
 
@@ -67,11 +78,8 @@ $$
 
 Trait effects, phylogeny etc etc
 
-## What does this mean?
 
-
-
-# Fitting a Hierarchical Ordination
+## Fitting a Hierarchical Ordination
 
 Difficult!
 
@@ -81,50 +89,44 @@ So, let's try something different
 
 ## Spot the GLM
 
-If we condition on $z_{jl}$, this is a GLM (1 LV for simplicity)
+If we condition on $z_{jl}$, this is a GLM:
 
 $$
-g(E(Y_{is})) = \alpha_i + \beta_j + textcolor{red}{z_{i}} (\Sigma_{ll} \gamma_{j})
+\color{red}{g(E(Y_{is})) = \alpha_i + \beta_j +  \sum_{s=1}^S X_{js}\omega_{sl}}z_{i} \color{red}{ +  \epsilon_{jl}}z_{i}
 $$ 
 
-If we condition on $\gamma_{il}$, this is a GLM
+If we condition on $\gamma_{il}$, this is a GLM:
 
 $$
-g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}
+g(E(Y_{is})) = \color{red}{\alpha_i + \beta_j + \sum_{k=1}^K X_{ik}} \gamma_{j} \color{red}{\phi_{kl} + }{\gamma_{j}} \color{red}{\varepsilon_{il} }
 $$
 
-So we can draw $z_{jl}$ or $\gamma_{il}$ from their distribution, and marginalise?
+We use $z_{jl}$ and $\gamma_{j}$ as weights
+
+## In details
+
+We can use this as a multivariate Gibbs sampler
+
+Use INLA, so we have all the flexibility in there
+
+We can marginalise over the posteriors, not just draw from them.
+
+- improve the estimates of $z$ and $\gamma$
 
 
 ## In details
 
-Draw $z_{jl}$
+Estimate $z_{jl}$
 
-- Fit $g(E(Y_{is})) = \alpha_i + \beta_j + z_{i} (\Sigma_{ll} \gamma_{j})$
+- Fit $g(E(Y_{is})) = \alpha_i + \beta_j + \sum_{k=1}^K X_{ik} \color{red}{\gamma_{j}}\phi_{kl} + \color{red}{\gamma_{j}}\varepsilon_{il}$
+- draw $z^*_{jl} = z_{jl} \sqrt{\Sigma_l} = \sum_{k=1}^K X_{ik} \phi_{kl} + \varepsilon_{il}$ from their posterior
+- standardise: $z_{jl} = z^*_{jl}/sd(z^*_{\cdot l})$
 
-Simulate $\gamma_{il}$ from its posterior
+Estimate $\gamma_{il}$
 
-- Fit $g(E(Y_{is})) = \alpha_i + \beta_j + (z_{i} \Sigma_{ll}) \gamma_{j}$
-
-Simulate $z_{jl}$ from its posterior
-
-```{r}
-1 + 1
-```
+- as above
 
 etc.
-
-## In details
-
-This is just a multivariate Gibbs sampler
-
-- up to the INLA approximations
-
-We can marginaise over the posteriors, not just draw from them.
-
-```{r}
-1 + 1
-```
 
 ## Example: Ant traits
 
@@ -139,19 +141,19 @@ library(gllvm)
 library(INLA)
 data("antTraits")
 
-ColMergeRes1 <- inla.merge(Res$colinla[[1]])
-ColMergeRes2 <- inla.merge(Res$colinla[[2]])
-ColMergeRes3 <- inla.merge(Res$colinla[[3]])
-ColMergeRes4 <- inla.merge(Res$colinla[[4]])
-ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
-rm(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4)
-save(Res, ColMergeRes, file="../inst/AntsRes.RData")
+# ColMergeRes1 <- inla.merge(Res$colinla[[1]])
+# ColMergeRes2 <- inla.merge(Res$colinla[[2]])
+# ColMergeRes3 <- inla.merge(Res$colinla[[3]])
+# ColMergeRes4 <- inla.merge(Res$colinla[[4]])
+# ColMergeRes <- inla.merge(list(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4))
+# rm(ColMergeRes1, ColMergeRes2, ColMergeRes3, ColMergeRes4)
+# save(Res, ColMergeRes, file="../inst/AntsRes.RData")
 
 ```
 
 - `r ncol(antTraits$abund)` species of ant 
 - `r nrow(antTraits$abund)` sites
-- `r ncol(antTraits$env)` environmental variabls and 
+- `r ncol(antTraits$env)` environmental variables and 
 - `r ncol(antTraits$traits)` traits
 
 Use 1 latent variable
@@ -173,10 +175,10 @@ plot(Res$col[,6])
 par(mfrow=c(1,2))
 
 c6 <- c(unlist(lapply(Res$col, function(l) l[,"Col3lv1"])))
-plot(density(c6))
+plot(density(c6), main="MCMC draws")
 lines(ColMergeRes$marginals.lincomb.derived$lc3.LV1, col=2)
 
-plot(ColMergeRes$marginals.lincomb.derived[[6]], type="l")
+plot(ColMergeRes$marginals.lincomb.derived[["lc3.LV1"]], type="l", main="INLA marginal")
 
 ```
 
@@ -205,37 +207,93 @@ segments(RowCI[,"2.5%"], 1:length(RowMean), RowCI[,"97.5%"], 1:length(RowMean))
 
 ```
 
+## Covariate Effects
 
-```{r}
+```{r RowCovResults, warning=FALSE}
+RowFixedHPD.l <- lapply(RowMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
 
-plot(Res$col[,6], trace=FALSE)
+RowHPD <- cbind(
+  At = 1:length(RowFixedHPD.l),
+  mode = unlist(lapply(RowMergeRes$marginals.fixed, inla.mmarginal)),
+  low = unlist(lapply(RowFixedHPD.l, function(x) x[1,"low"])),
+  high = unlist(lapply(RowFixedHPD.l, function(x) x[1,"high"]))
+)
+
+dimnames(RowHPD)[[1]] <- gsub("\\.", " ", gsub(".LV.*", "", dimnames(RowHPD)[[1]]))
+
+```
+
+```{r ColCovResults, warning=FALSE}
+ColFixedHPD.l <- lapply(ColMergeRes$marginals.fixed, function(marg, p) inla.hpdmarginal(p, marg), p=0.95)
+ColRandHPD.l <- lapply(ColMergeRes$marginals.random[1:2], function(lst) 
+  lapply(lst, function(marg, p) inla.hpdmarginal(p, marg), p=0.95))
+
+ColRandHPD.l2 <- do.call(c, unlist(ColRandHPD.l, recursive=FALSE))
+
+ColRandmode <- unlist(lapply(ColMergeRes$marginals.random[1:2], function(lst) 
+  lapply(lst, inla.mmarginal)))
+
+ColHPD <- cbind(
+  At = 1:(length(ColMergeRes$marginals.fixed)+length(ColRandmode)),
+  mode = c(unlist(lapply(ColMergeRes$marginals.fixed, inla.mmarginal)),
+           unlist(ColRandmode)),
+  low = unlist(c(lapply(ColFixedHPD.l, function(x) x[1,"low"]),
+                 lapply(ColRandHPD.l, lapply, function(x) x[1,"low"]))),
+  high = unlist(c(lapply(ColFixedHPD.l, function(x) x[1,"high"]),
+                 lapply(ColRandHPD.l, lapply, function(x) x[1,"high"])))
+)
+
+dimnames(ColHPD)[[1]] <- gsub("\\.", " ", gsub(".LV.*", "", dimnames(ColHPD)[[1]]))
+dimnames(ColHPD)[[1]][grep("Pilos", dimnames(ColHPD)[[1]])] <- paste(dimnames(ColHPD)[[1]][grep("Pilos", dimnames(ColHPD)[[1]])], 1:4, sep=" ")
+dimnames(ColHPD)[[1]][grep("Poly", dimnames(ColHPD)[[1]])] <- paste(dimnames(ColHPD)[[1]][grep("Poly", dimnames(ColHPD)[[1]])], 1:3, sep=" ")
+```
+
+```{r PlotCovEffs}
+par(mar=c(4.1,6,3,1), mfrow=c(1,2), oma=c(0,2,0,0))
+plot(ColHPD[-1, "mode"], ColHPD[-1, "At"], xlim=range(ColHPD[-1, c("low", "high")]),
+     ann=FALSE, axes=FALSE)
+title("Traits")
+segments(ColHPD[-1, "low"], ColHPD[-1, "At"], ColHPD[-1, "high"], ColHPD[-1, "At"])
+abline(v=0)
+axis(1)
+axis(2, dimnames(ColHPD)[[1]][-1], at=ColHPD[-1, "At"], las=1)
+
+plot(RowHPD[-1, "mode"], RowHPD[-1, "At"], xlim=range(RowHPD[-1, c("low", "high")]),
+     ann=FALSE, axes=FALSE)
+title("Environment")
+segments(RowHPD[-1, "low"], RowHPD[-1, "At"], RowHPD[-1, "high"], RowHPD[-1, "At"])
+abline(v=0)
+axis(1)
+axis(2, dimnames(RowHPD)[[1]][-1], at=RowHPD[-1, "At"], las=1)
 
 ```
 
 
-Mixing
-One Latent Variable
+## What is Weber's Length?
 
-# Improvements
+ML (Mesosomal or Weber's length). The diagonal length of the mesosoma in profile from the point at which the pronotum meets the cervical shield to the posterior basal angle of the metapleuron. 
 
-Identifiability (can we just rotate at the start?)
+- Antwiki (https://www.antwiki.org/wiki/Morphological_Measurements)
 
-Space, time, phylogeny
+Abdomen length
 
-## Quarto
+## The Current Status
 
-Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+## How Well does it work?
 
-## Bullets
+I don't trust these results (yet)
 
-When you click the **Render** button a document will be generated that includes:
+Bugs need to be tracked and caught
 
--   Content authored with markdown
--   Output from executable code
+\>1 LV will need work to work out how best to rotate the LVs
 
-## Code
+Then play: Space, time, phylogeny
 
-When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+## If you want to find bugs
 
 
+(or laugh at my bad coding)
 
+https://github.com/oharar/HierOrd
+
+![](QRcodeHierOrd.png){height=60%}
